@@ -1,35 +1,27 @@
 #include <raylib.h>
 
-#include "settings.hpp"
-#include "scenes/scene.hpp"
-#include "shared_context.hpp"
-
 int main(void)
 {
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(800, 600, "WebAssembly");
+    
+    Font font = LoadFont("resources/fonts/nokiafc22.ttf");
+    Texture texture = LoadTexture("resources/images/logo.png");
 
-    InitWindow(Settings::DefaultScreenWidth, Settings::DefaultScreenHeight, "Snake II");
+    SetTargetFPS(60);
 
+    while (!WindowShouldClose())
     {
-        SetTargetFPS(25);
+        BeginDrawing();
 
-        SharedContext context;
+        ClearBackground(RAYWHITE);
 
-        context.current_scene()->on_enter();
+        DrawTextEx(font, "Hello, world", Vector2{190, 200}, 20, 2, LIGHTGRAY);
+        DrawTexture(texture, 300, 400, WHITE);
 
-        while (!WindowShouldClose()) {
-            context.current_scene()->handle_input();
-            context.current_scene()->update();
-
-            if (IsWindowResized()) {
-                context.current_scene()->on_window_resized();
-            }
-
-            context.current_scene()->draw();
-        }
-
-        context.current_scene()->on_exit();
+        EndDrawing();
     }
+
+    UnloadFont(font);
 
     CloseWindow();
 
