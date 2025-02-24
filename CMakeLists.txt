@@ -8,20 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 
 # GLFW
-# find_package(glfw3 REQUIRED)
-# message(STATUS "Found GLFW3 in ${GLFW3_INCLUDE_DIR}")
-
-FetchContent_Declare (
-    glfw
-    GIT_REPOSITORY https://github.com/glfw/glfw.git
-    GIT_TAG master
-)
-
-set(GLFW_BUILD_WAYLAND ON)
-set(GLFW_BUILD_DOCS OFF CACHE BOOL  "")
-# set(GLFW_INSTALL OFF CACHE BOOL  "")
-
-FetchContent_MakeAvailable(glfw)
+find_package(glfw3 REQUIRED)
+message(STATUS "Found GLFW3 in ${GLFW3_INCLUDE_DIR}")
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third-party/glad)
 
