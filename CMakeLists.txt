@@ -11,13 +11,24 @@ include(FetchContent)
 find_package(glfw3 REQUIRED)
 message(STATUS "Found GLFW3 in ${GLFW3_INCLUDE_DIR}")
 
+# GLM
+include(FetchContent)
+
+FetchContent_Declare(
+	glm
+	GIT_REPOSITORY	https://github.com/g-truc/glm.git
+	GIT_TAG 	bf71a834948186f4097caa076cd2663c69a10e1e #refs/tags/1.0.1
+)
+
+FetchContent_MakeAvailable(glm)
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third-party/glad)
 
 add_executable(${PROJECT_NAME}
   src/main.cpp
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE glfw glad)
+target_link_libraries(${PROJECT_NAME} PRIVATE glfw glad glm::glm)
 
 if (${PLATFORM} MATCHES "Web")
     add_custom_command(

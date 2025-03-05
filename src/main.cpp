@@ -10,8 +10,78 @@
 #include "glad/glad.h"
 #endif
 #include <GLFW/glfw3.h>
+// #include <GL/glew.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 std::vector<float> vertices;
+
+// Window dimensions
+const int WIN_WIDTH = 800, WIN_HEIGHT = 600;
+glm::mat4 modelMatrix = glm::mat4(1.0f);
+
+// Arcball variables
+bool isDragging = false;
+glm::vec3 startVec, endVec;
+glm::quat currentRotation = glm::quat(1, 0, 0, 0);
+glm::quat lastRotation = glm::quat(1, 0, 0, 0);
+
+// Convert screen coordinates to arcball sphere
+glm::vec3 screenToArcball(float x, float y)
+{
+    glm::vec3 p = glm::vec3(
+        (2.0f * x - WIN_WIDTH) / WIN_WIDTH,
+        (WIN_HEIGHT - 2.0f * y) / WIN_HEIGHT,
+        0.0f);
+
+    float mag = p.x * p.x + p.y * p.y;
+    if (mag <= 1.0f) {
+        p.z = sqrt(1.0f - mag); // Point is on sphere
+    } else {
+        p = glm::normalize(p); // Point is on hyperbolic sheet
+    }
+    return p;
+}
+
+// Mouse callbacks
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            isDragging = true;
+            double xpos, ypos;
+            glfwGetCursorPos(window, &xpos, &ypos);
+            startVec = screenToArcball(xpos, ypos);
+            std::cout << "mouse button " << std::endl;
+        } else if (action == GLFW_RELEASE) {
+            isDragging = false;
+            lastRotation = currentRotation;
+        }
+    }
+}
+
+void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
+{
+    if (isDragging) {
+        std::cout << "move mouse" << std::endl;
+        endVec = screenToArcball(xpos, ypos);
+        glm::vec3 axis = glm::cross(startVec, endVec);
+        float angle = acos(glm::dot(startVec, endVec));
+
+        if (glm::length(axis) > 0.0001f) {
+            axis = glm::normalize(axis);
+            glm::quat deltaRotation = glm::angleAxis(angle, axis);
+            currentRotation = deltaRotation * lastRotation;
+        }
+    }
+}
+
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(1.0f + yoffset * 0.1f));
+}
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -89,14 +159,38 @@ void draw_arrow()
 // Create VAO and VBO
 GLuint VAO, VBO;
 
+void print_mat4(glm::mat4 m)
+{
+    for (size_t i = 0; m.length(); i++) {
+        for (size_t j = 0; m[0].length(); j++) {
+            std::cout << m[i][j] << "  ";
+        }
+        std::cout << std::endl;
+    }
+}
+
 void main_loop(void* ctx)
 {
     GLFWwindow* window = (GLFWwindow*)ctx;
 
-    glClearColor(0.7f, 0.9f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    // glClearColor(0.7f, 0.9f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(shaderProgram);
+
+    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, -3));
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)WIN_WIDTH / WIN_HEIGHT, 0.1f, 100.0f);
+    glm::mat4 model = glm::mat4_cast(currentRotation);
+
+    GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
+    GLuint viewLoc = glGetUniformLocation(shaderProgram, "view");
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
+    GLuint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, &projection[0][0]);
+
+    print_mat4(model);
+
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, vertices.size() / 3);
 
@@ -141,10 +235,12 @@ void load_shader()
         const char* vertexShaderSource = R"(
             #version 330 core
             layout (location = 0) in vec3 aPos;
+            uniform mat4 model;
+            uniform mat4 view;
+            uniform mat4 projection;
             void main() {
-                gl_Position = vec4(aPos, 1.0);
-            }
-            )";
+                gl_Position = projection * view * model * vec4(aPos, 1.0);
+            })";
         vertexShader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
         glCompileShader(vertexShader);
@@ -201,6 +297,14 @@ int main(void)
     glViewport(0, 0, 800, 600);
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    // // Set mouse callbacks
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    glfwSetCursorPosCallback(window, cursorPositionCallback);
+    glfwSetScrollCallback(window, scrollCallback);
+
+    // OpenGL settings
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEBUG_OUTPUT);
 
     vertices = generateCylinderVertices();
 
