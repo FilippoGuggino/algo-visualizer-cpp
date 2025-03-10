@@ -161,8 +161,8 @@ GLuint VAO, VBO;
 
 void print_mat4(glm::mat4 m)
 {
-    for (size_t i = 0; m.length(); i++) {
-        for (size_t j = 0; m[0].length(); j++) {
+    for (size_t i = 0; i < m.length(); i++) {
+        for (size_t j = 0; j < m[0].length(); j++) {
             std::cout << m[i][j] << "  ";
         }
         std::cout << std::endl;
@@ -233,31 +233,69 @@ void load_shader()
     unsigned int vertexShader;
     {
         const char* vertexShaderSource = R"(
-            #version 330 core
+            #version 300 es
+            // precision mediump float;
             layout (location = 0) in vec3 aPos;
             uniform mat4 model;
-            uniform mat4 view;
-            uniform mat4 projection;
+            // uniform mat4 view;
+            // uniform mat4 projection;
             void main() {
-                gl_Position = projection * view * model * vec4(aPos, 1.0);
+                gl_Position = model * vec4(aPos, 1.0);
             })";
         vertexShader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
         glCompileShader(vertexShader);
+
+        GLint isCompiled;
+        glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &isCompiled);
+        if (isCompiled == GL_FALSE) {
+            GLint maxLength = 0;
+            glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &maxLength);
+
+            // The maxLength includes the NULL character
+            std::vector<GLchar> errorLog(maxLength);
+            glGetShaderInfoLog(vertexShader, maxLength, &maxLength, &errorLog[0]);
+
+            std::cout << errorLog.data() << std::endl;
+
+            // Provide the infolog in whatever manor you deem best.
+            // Exit with failure.
+            glDeleteShader(vertexShader); // Don't leak the shader.
+            return;
+        }
     }
     unsigned int fragmentShader;
     {
         const char* fragmentShaderSource = R"(
-            #version 330 core
-            out vec4 FragColor;
+            #version 300 es
+            precision mediump float;
+            layout(location = 0) out vec4 out_color;
             void main() {
-                FragColor = vec4(1.0, 0.5, 0.2, 1.0);
-            }
-            )";
+                out_color = vec4(1.0, 1.0, 1.0, 1.0);
+            })";
 
         fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
         glCompileShader(fragmentShader);
+
+        GLint isCompiled;
+        glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &isCompiled);
+        std::cout << "compiled: " << isCompiled << std::endl;
+        if (isCompiled == GL_FALSE) {
+            GLint maxLength = 0;
+            glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &maxLength);
+
+            // The maxLength includes the NULL character
+            std::vector<GLchar> errorLog(maxLength);
+            glGetShaderInfoLog(fragmentShader, maxLength, &maxLength, &errorLog[0]);
+
+            std::cout << errorLog.data() << std::endl;
+
+            // Provide the infolog in whatever manor you deem best.
+            // Exit with failure.
+            glDeleteShader(fragmentShader); // Don't leak the shader.
+            return;
+        }
     }
 
     shaderProgram = glCreateProgram();
@@ -278,7 +316,10 @@ int main(void)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
+    const uint kWinWidth = 800;
+    const uint kWinHeight = 800;
+
+    GLFWwindow* window = glfwCreateWindow(kWinWidth, kWinHeight, "LearnOpenGL", NULL, NULL);
     if (window == NULL) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -294,10 +335,12 @@ int main(void)
     }
 #endif
 
-    glViewport(0, 0, 800, 600);
+    load_shader();
+
+    glViewport(0, 0, kWinWidth, kWinHeight);
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    // // Set mouse callbacks
+    // Set mouse callbacks
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
     glfwSetCursorPosCallback(window, cursorPositionCallback);
     glfwSetScrollCallback(window, scrollCallback);
@@ -306,14 +349,41 @@ int main(void)
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_DEBUG_OUTPUT);
 
-    vertices = generateCylinderVertices();
+    std::vector<GLfloat> vertices = {
+        0.5f, 0.5f, 0.0f, // top right
+        0.5f,
+        -0.5f,
+        0.0f, // bottom right
+        -0.5f,
+        -0.5f,
+        0.0f, // bottom left
+        -0.5f,
+        0.5f,
+        0.0f // top left
+    };
+    unsigned int indices[] = {
+        // note that we start from 0!
+        0,
+        1,
+        3, // first triangle
+        1,
+        2,
+        3 // second triangle
+    };
+
+    // vertices = generateCylinderVertices();
 
     glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-
     glBindVertexArray(VAO);
+
+    glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
+    unsigned int EBO;
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
@@ -322,7 +392,36 @@ int main(void)
     emscripten_set_main_loop_arg(main_loop, (void*)window, 0, true);
 #else
     while (!glfwWindowShouldClose(window)) {
-        main_loop((void*)window);
+        // main_loop((void*)window);
+        glClearColor(0.7f, 0.9f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glUseProgram(shaderProgram);
+
+        glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, -3));
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)WIN_WIDTH / WIN_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 model = glm::mat4_cast(currentRotation);
+
+        GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
+        GLuint viewLoc = glGetUniformLocation(shaderProgram, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
+        GLuint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, &projection[0][0]);
+
+        print_mat4(model);
+
+        // glDrawArrays(GL_TRIANGLE_STRIP, 0, vertices.size() / 3);
+        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // glBindVertexArray(0);
+
+        // draw_arrow();
+        // drawCylinder(5, 5, 30, 30);
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
     }
 #endif
 
