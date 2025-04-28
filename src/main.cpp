@@ -54,7 +54,6 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
             double xpos, ypos;
             glfwGetCursorPos(window, &xpos, &ypos);
             startVec = screenToArcball(xpos, ypos);
-            std::cout << "mouse button " << std::endl;
         } else if (action == GLFW_RELEASE) {
             isDragging = false;
             lastRotation = currentRotation;
@@ -65,7 +64,6 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
 {
     if (isDragging) {
-        std::cout << "move mouse" << std::endl;
         endVec = screenToArcball(xpos, ypos);
         glm::vec3 axis = glm::cross(startVec, endVec);
         float angle = acos(glm::dot(startVec, endVec));
@@ -89,72 +87,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 }
 
 unsigned int shaderProgram;
-
-void draw_arrow()
-{
-    float vertices[] = {
-        -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.0f, 0.5f, 0.0f
-    };
-
-    unsigned int VBO;
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glUseProgram(shaderProgram);
-
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-}
-
-// void drawCylinder(float radius, float height, int slices, int stacks)
-// {
-//     glUseProgram(shaderProgram);
-
-//     // Draw the side of the cylinder (lateral surface)
-//     float angleStep = 2 * M_PI / slices; // Step in angle for each slice
-//     for (int i = 0; i < slices; ++i) {
-//         float angle1 = i * angleStep;
-//         float angle2 = (i + 1) * angleStep;
-
-//         glBegin(GL_QUAD_STRIP); // Draw a quad strip between the two angle positions
-//         for (int j = 0; j <= stacks; ++j) {
-//             float z = j * height / stacks - height / 2.0f; // Calculate the Z coordinate for each stack
-//             float x1 = radius * cos(angle1);
-//             float y1 = radius * sin(angle1);
-//             float x2 = radius * cos(angle2);
-//             float y2 = radius * sin(angle2);
-
-//             glVertex3f(x1, y1, z); // Vertex for the current angle
-//             glVertex3f(x2, y2, z); // Vertex for the next angle
-//         }
-//         glEnd();
-//     }
-
-//     // Draw the top cap of the cylinder (a circle)
-//     glBegin(GL_TRIANGLE_FAN);
-//     glVertex3f(0.0f, 0.0f, height / 2.0f); // Center of the top cap
-//     for (int i = 0; i <= slices; ++i) {
-//         float angle = i * angleStep;
-//         float x = radius * cos(angle);
-//         float y = radius * sin(angle);
-//         glVertex3f(x, y, height / 2.0f);
-//     }
-//     glEnd();
-
-//     // Draw the bottom cap of the cylinder (a circle)
-//     glBegin(GL_TRIANGLE_FAN);
-//     glVertex3f(0.0f, 0.0f, -height / 2.0f); // Center of the bottom cap
-//     for (int i = 0; i <= slices; ++i) {
-//         float angle = i * angleStep;
-//         float x = radius * cos(angle);
-//         float y = radius * sin(angle);
-//         glVertex3f(x, y, -height / 2.0f);
-//     }
-//     glEnd();
-// }
 
 // Create VAO and VBO
 GLuint VAO, VBO;
