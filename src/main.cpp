@@ -114,29 +114,24 @@ void main_loop(void* ctx)
 {
     GLFWwindow* window = (GLFWwindow*)ctx;
 
-    // glClearColor(0.7f, 0.9f, 0.1f, 1.0f);
+    glClearColor(0.7f, 0.9f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(shaderProgram);
 
-    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, -3));
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)WIN_WIDTH / WIN_HEIGHT, 0.1f, 100.0f);
-    glm::mat4 model = glm::mat4_cast(currentRotation);
+    view = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
+    projection = glm::perspective(glm::radians(45.0f), (float)WIN_WIDTH / WIN_HEIGHT, 0.1f, 100.0f);
 
     GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    model = rotation_matrix * scale_matrix;
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
     GLuint viewLoc = glGetUniformLocation(shaderProgram, "view");
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
     GLuint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, &projection[0][0]);
 
-    print_mat4(model);
-
     glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, vertices.size() / 3);
-
-    // draw_arrow();
-    // drawCylinder(5, 5, 30, 30);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     glfwSwapBuffers(window);
     glfwPollEvents();
@@ -330,45 +325,16 @@ int main(void)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    model = glm::mat4_cast(currentRotation);
+    model = glm::identity<glm::mat4>();
     rotation_matrix = glm::identity<glm::mat4>();
     scale_matrix = glm::identity<glm::mat4>();
-    scale_vec = { 1.0, 1.0, 1.0 };
+    scale_vec = glm::one<glm::vec3>();
 
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop_arg(main_loop, (void*)window, 0, true);
 #else
     while (!glfwWindowShouldClose(window)) {
-        // main_loop((void*)window);
-        glClearColor(0.7f, 0.9f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        glUseProgram(shaderProgram);
-
-        view = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
-        projection = glm::perspective(glm::radians(45.0f), (float)WIN_WIDTH / WIN_HEIGHT, 0.1f, 100.0f);
-
-        GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
-        model = rotation_matrix * scale_matrix;
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
-        GLuint viewLoc = glGetUniformLocation(shaderProgram, "view");
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
-        GLuint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, &projection[0][0]);
-
-        // print_mat4(view);
-
-        // glDrawArrays(GL_TRIANGLE_STRIP, 0, vertices.size() / 3);
-        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        // glBindVertexArray(0);
-
-        // draw_arrow();
-        // drawCylinder(5, 5, 30, 30);
-
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+        main_loop((void*)window);
     }
 #endif
 
