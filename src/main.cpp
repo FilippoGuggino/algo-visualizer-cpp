@@ -27,6 +27,13 @@ bool isDragging = false;
 glm::vec3 startVec, endVec;
 glm::quat currentRotation = glm::quat(1, 0, 0, 0);
 glm::quat lastRotation = glm::quat(1, 0, 0, 0);
+glm::mat4 rotation_matrix;
+glm::mat4 scale_matrix;
+glm::vec3 scale_vec;
+
+glm::mat4 view;
+glm::mat4 projection;
+glm::mat4 model;
 
 // Convert screen coordinates to arcball sphere
 glm::vec3 screenToArcball(float x, float y)
@@ -72,13 +79,15 @@ void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
             axis = glm::normalize(axis);
             glm::quat deltaRotation = glm::angleAxis(angle, axis);
             currentRotation = deltaRotation * lastRotation;
+            rotation_matrix = glm::mat4_cast(currentRotation);
         }
     }
 }
 
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    modelMatrix = glm::scale(modelMatrix, glm::vec3(1.0f + yoffset * 0.1f));
+    scale_vec *= glm::vec3(1.0f + yoffset * 0.1f);
+    scale_matrix = glm::scale(glm::mat4(1.0f), scale_vec);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -169,11 +178,12 @@ void load_shader()
             // precision mediump float;
             layout (location = 0) in vec3 aPos;
             uniform mat4 model;
-            // uniform mat4 view;
+            uniform mat4 view;
             // uniform mat4 projection;
             void main() {
-                gl_Position = model * vec4(aPos, 1.0);
+                gl_Position = model * view * vec4(aPos, 1.0);
             })";
+
         vertexShader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
         glCompileShader(vertexShader);
@@ -320,6 +330,11 @@ int main(void)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
+    model = glm::mat4_cast(currentRotation);
+    rotation_matrix = glm::identity<glm::mat4>();
+    scale_matrix = glm::identity<glm::mat4>();
+    scale_vec = { 1.0, 1.0, 1.0 };
+
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop_arg(main_loop, (void*)window, 0, true);
 #else
@@ -330,18 +345,18 @@ int main(void)
 
         glUseProgram(shaderProgram);
 
-        glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, -3));
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)WIN_WIDTH / WIN_HEIGHT, 0.1f, 100.0f);
-        glm::mat4 model = glm::mat4_cast(currentRotation);
+        view = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
+        projection = glm::perspective(glm::radians(45.0f), (float)WIN_WIDTH / WIN_HEIGHT, 0.1f, 100.0f);
 
         GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
+        model = rotation_matrix * scale_matrix;
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
         GLuint viewLoc = glGetUniformLocation(shaderProgram, "view");
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
         GLuint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, &projection[0][0]);
 
-        print_mat4(model);
+        // print_mat4(view);
 
         // glDrawArrays(GL_TRIANGLE_STRIP, 0, vertices.size() / 3);
         // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
