@@ -6,9 +6,14 @@
 #include <emscripten.h>
 #define GL_EXT_PROTOTYPES
 #define EGS_EGLEXT_PROTOTYPES
+#define log_console(S) emscripten_log(EM_LOG_CONSOLE, S)
 #else
-#include "glad/glad.h"
+// disable log
+// TODO redirect with spdlog
+#define log_console
 #endif
+
+#include "glad/glad.h"
 #include <GLFW/glfw3.h>
 // #include <GL/glew.h>
 #include <glm/glm.hpp>
@@ -112,6 +117,8 @@ void print_mat4(glm::mat4 m)
 
 void main_loop(void* ctx)
 {
+    log_console("loop");
+
     GLFWwindow* window = (GLFWwindow*)ctx;
 
     glClearColor(0.7f, 0.9f, 0.1f, 1.0f);
@@ -168,9 +175,8 @@ void load_shader()
 {
     unsigned int vertexShader;
     {
-        const char* vertexShaderSource = R"(
-            #version 300 es
-            // precision mediump float;
+        const char* vertexShaderSource = R"(#version 300 es
+            precision mediump float;
             layout (location = 0) in vec3 aPos;
             uniform mat4 model;
             uniform mat4 view;
@@ -201,10 +207,10 @@ void load_shader()
             return;
         }
     }
+
     unsigned int fragmentShader;
     {
-        const char* fragmentShaderSource = R"(
-            #version 300 es
+        const char* fragmentShaderSource = R"(#version 300 es
             precision mediump float;
             layout(location = 0) out vec4 out_color;
             void main() {
@@ -217,7 +223,6 @@ void load_shader()
 
         GLint isCompiled;
         glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &isCompiled);
-        std::cout << "compiled: " << isCompiled << std::endl;
         if (isCompiled == GL_FALSE) {
             GLint maxLength = 0;
             glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &maxLength);
@@ -247,14 +252,14 @@ void load_shader()
 
 int main(void)
 {
-    // emscripten_log(EM_LOG_CONSOLE, "main");
+    log_console("main");
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-    const uint kWinWidth = 800;
-    const uint kWinHeight = 800;
+    const unsigned int kWinWidth = 800;
+    const unsigned int kWinHeight = 800;
 
     GLFWwindow* window = glfwCreateWindow(kWinWidth, kWinHeight, "LearnOpenGL", NULL, NULL);
     if (window == NULL) {
@@ -264,13 +269,10 @@ int main(void)
     }
     glfwMakeContextCurrent(window);
 
-#ifdef __EMSCRIPTEN__
-#else
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
-#endif
 
     load_shader();
 
