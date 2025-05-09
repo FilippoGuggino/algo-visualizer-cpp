@@ -7,9 +7,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
 
-# GLFW
-find_package(glfw3 REQUIRED)
-message(STATUS "Found GLFW3 in ${GLFW3_INCLUDE_DIR}")
+if(NOT ${PLATFORM} MATCHES "Web")
+  # GLFW
+  find_package(glfw3 REQUIRED)
+  message(STATUS "Found GLFW3 in ${GLFW3_INCLUDE_DIR}")
+endif()
 
 # GLM
 include(FetchContent)
