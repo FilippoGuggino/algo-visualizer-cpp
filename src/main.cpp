@@ -25,7 +25,7 @@
 std::vector<float> vertices;
 
 // Window dimensions
-const int WIN_WIDTH = 800, WIN_HEIGHT = 600;
+const int WIN_WIDTH = 800, WIN_HEIGHT = 800;
 glm::mat4 modelMatrix = glm::mat4(1.0f);
 
 // Arcball variables
@@ -257,10 +257,7 @@ int main(void)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-    const unsigned int kWinWidth = 800;
-    const unsigned int kWinHeight = 800;
-
-    GLFWwindow* window = glfwCreateWindow(kWinWidth, kWinHeight, "LearnOpenGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(WIN_WIDTH, WIN_HEIGHT, "LearnOpenGL", NULL, NULL);
     if (window == NULL) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -275,7 +272,7 @@ int main(void)
 
     load_shader();
 
-    glViewport(0, 0, kWinWidth, kWinHeight);
+    glViewport(0, 0, WIN_WIDTH, WIN_HEIGHT);
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     // Set mouse callbacks
