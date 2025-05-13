@@ -23,7 +23,7 @@
 std::vector<float> vertices;
 
 // Window dimensions
-const int WIN_WIDTH = 800, WIN_HEIGHT = 800;
+int win_width = 800, win_height = 800;
 glm::mat4 modelMatrix = glm::mat4(1.0f);
 
 // Arcball variables
@@ -43,8 +43,8 @@ glm::mat4 model;
 glm::vec3 screenToArcball(float x, float y)
 {
     glm::vec3 p = glm::vec3(
-        (2.0f * x - WIN_WIDTH) / WIN_WIDTH,
-        (WIN_HEIGHT - 2.0f * y) / WIN_HEIGHT,
+        (2.0f * x - win_width) / win_width,
+        (win_height - 2.0f * y) / win_height,
         0.0f);
 
     float mag = p.x * p.x + p.y * p.y;
@@ -97,6 +97,8 @@ void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
+    win_width = width;
+    win_height = height;
 }
 
 unsigned int shaderProgram;
@@ -124,7 +126,7 @@ void main_loop(void* ctx)
     glUseProgram(shaderProgram);
 
     view = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
-    projection = glm::perspective(glm::radians(45.0f), (float)WIN_WIDTH / WIN_HEIGHT, 0.1f, 100.0f);
+    projection = glm::perspective(glm::radians(45.0f), (float)win_width / win_height, 0.1f, 100.0f);
 
     GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
     model = rotation_matrix * scale_matrix;
@@ -255,7 +257,7 @@ int main(void)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-    GLFWwindow* window = glfwCreateWindow(WIN_WIDTH, WIN_HEIGHT, "LearnOpenGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(win_width, win_height, "LearnOpenGL", NULL, NULL);
     if (window == NULL) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -270,7 +272,7 @@ int main(void)
 
     load_shader();
 
-    glViewport(0, 0, WIN_WIDTH, WIN_HEIGHT);
+    glViewport(0, 0, win_width, win_height);
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     // Set mouse callbacks
