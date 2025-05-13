@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include "spdlog/spdlog.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -10,7 +11,7 @@
 #else
 // disable log
 // TODO redirect with spdlog
-#define log_console
+#define log_console(S) spdlog::info(S)
 #endif
 
 #include "glad/glad.h"
@@ -117,8 +118,6 @@ void print_mat4(glm::mat4 m)
 
 void main_loop(void* ctx)
 {
-    log_console("loop");
-
     GLFWwindow* window = (GLFWwindow*)ctx;
 
     glClearColor(0.7f, 0.9f, 0.1f, 1.0f);

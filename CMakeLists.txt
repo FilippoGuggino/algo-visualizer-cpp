@@ -24,13 +24,21 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(glm)
 
+# spdlog
+FetchContent_Declare(
+  spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog.git
+  GIT_TAG v1.15.3
+)
+FetchContent_MakeAvailable(spdlog)
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third-party/glad)
 
 add_executable(${PROJECT_NAME}
   src/main.cpp
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE glfw glad glm::glm)
+target_link_libraries(${PROJECT_NAME} PRIVATE glfw glad glm::glm spdlog)
 
 if(${PLATFORM} MATCHES "Web")
   add_custom_command(
