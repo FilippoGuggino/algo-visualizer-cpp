@@ -36,6 +36,8 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third-party/glad)
 
 add_executable(${PROJECT_NAME}
   src/main.cpp
+  src/canvas.cpp
+  src/geometry.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw glad glm::glm spdlog)
