@@ -8,24 +8,14 @@ Rectangle::Rectangle(float width, float height)
 {
     m_vertices = {
         width / 2, height / 2, 0.0f, // top right
-        width / 2,
-        -height / 2,
-        0.0f, // bottom right
-        -width / 2,
-        -height / 2,
-        0.0f, // bottom left
-        -width / 2,
-        height / 2,
-        0.0f // top left
+        width / 2, -height / 2, 0.0f, // bottom right
+        -width / 2, -height / 2, 0.0f, // bottom left
+        -width / 2, height / 2, 0.0f // top left
     };
 
     m_indices = {
-        0,
-        1,
-        3, // first triangle
-        1,
-        2,
-        3 // second triangle
+        0, 1, 3, // first triangle
+        1, 2, 3 // second triangle
     };
 
     glGenVertexArrays(1, &m_vao);

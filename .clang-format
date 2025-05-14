@@ -1,9 +1,8 @@
 ---
-BasedOnStyle:  WebKit
-BinPackArguments: false
+BasedOnStyle: WebKit
+BinPackArguments: true
 BinPackParameters: false
 ColumnLimit: 0
 FixNamespaceComments: true
 InsertBraces: true
 SortIncludes: false
-...
