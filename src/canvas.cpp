@@ -1,9 +1,12 @@
+#include <expected>
 #include "glad/glad.h"
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
 
 #include "canvas.h"
 #include "geometry.h"
+#include "log.h"
+#include "shaders_data.h"
 
 // Convert screen coordinates to arcball sphere
 static glm::vec3 screenToArcball(float x, float y, unsigned int width, unsigned int height)
@@ -20,85 +23,6 @@ static glm::vec3 screenToArcball(float x, float y, unsigned int width, unsigned 
         p = glm::normalize(p); // Point is on hyperbolic sheet
     }
     return p;
-}
-
-static void load_shader(unsigned int& shader)
-{
-    unsigned int vertexShader;
-    {
-        const char* vertexShaderSource = R"(#version 300 es
-            precision mediump float;
-            layout (location = 0) in vec3 aPos;
-            uniform mat4 model;
-            uniform mat4 view;
-            // uniform mat4 projection;
-            void main() {
-                gl_Position = model * view * vec4(aPos, 1.0);
-            })";
-
-        vertexShader = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-        glCompileShader(vertexShader);
-
-        GLint isCompiled;
-        glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &isCompiled);
-        if (isCompiled == GL_FALSE) {
-            GLint maxLength = 0;
-            glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &maxLength);
-
-            // The maxLength includes the NULL character
-            std::vector<GLchar> errorLog(maxLength);
-            glGetShaderInfoLog(vertexShader, maxLength, &maxLength, &errorLog[0]);
-
-            // std::cout << errorLog.data() << std::endl;
-
-            // Provide the infolog in whatever manor you deem best.
-            // Exit with failure.
-            glDeleteShader(vertexShader); // Don't leak the shader.
-            return;
-        }
-    }
-
-    unsigned int fragmentShader;
-    {
-        const char* fragmentShaderSource = R"(#version 300 es
-            precision mediump float;
-            layout(location = 0) out vec4 out_color;
-            void main() {
-                out_color = vec4(1.0, 1.0, 1.0, 1.0);
-            })";
-
-        fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-        glCompileShader(fragmentShader);
-
-        GLint isCompiled;
-        glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &isCompiled);
-        if (isCompiled == GL_FALSE) {
-            GLint maxLength = 0;
-            glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &maxLength);
-
-            // The maxLength includes the NULL character
-            std::vector<GLchar> errorLog(maxLength);
-            glGetShaderInfoLog(fragmentShader, maxLength, &maxLength, &errorLog[0]);
-
-            // std::cout << errorLog.data() << std::endl;
-
-            // Provide the infolog in whatever manor you deem best.
-            // Exit with failure.
-            glDeleteShader(fragmentShader); // Don't leak the shader.
-            return;
-        }
-    }
-
-    shader = glCreateProgram();
-
-    glAttachShader(shader, vertexShader);
-    glAttachShader(shader, fragmentShader);
-    glLinkProgram(shader);
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
 }
 
 static void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -133,6 +57,31 @@ static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
     }
 }
 
+static std::expected<unsigned int, std::string> compile_shader(const char* data, int shader_type)
+{
+    unsigned int shader;
+
+    shader = glCreateShader(shader_type);
+    glShaderSource(shader, 1, &data, NULL);
+    glCompileShader(shader);
+
+    GLint isCompiled;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
+    if (isCompiled == GL_FALSE) {
+        GLint maxLength = 0;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+        // The maxLength includes the NULL character
+        std::vector<GLchar> error_log(maxLength);
+        glGetShaderInfoLog(shader, maxLength, &maxLength, &error_log[0]);
+
+        glDeleteShader(shader);
+        return std::unexpected(error_log.data());
+    }
+
+    return shader;
+}
+
 Canvas::Canvas(GLFWwindow* window)
     : m_window(window)
     , m_model(glm::identity<glm::mat4>())
@@ -147,7 +96,24 @@ Canvas::Canvas(GLFWwindow* window)
     glfwSetCursorPosCallback(window, cursor_position_callback);
     glfwSetScrollCallback(window, scroll_callback);
 
-    load_shader(m_shader);
+    std::expected<unsigned int, std::string> vertex_shader;
+    if (vertex_shader = compile_shader(default_vert, GL_VERTEX_SHADER); !vertex_shader.has_value()) {
+        log_console("Could not compile vertex shader, " + vertex_shader.error());
+    }
+
+    std::expected<unsigned int, std::string> fragment_shader;
+    if (fragment_shader = compile_shader(default_frag, GL_FRAGMENT_SHADER); !fragment_shader.has_value()) {
+        log_console("Could not compile fragment shader, " + vertex_shader.error());
+    }
+
+    m_shader = glCreateProgram();
+
+    glAttachShader(m_shader, *vertex_shader);
+    glAttachShader(m_shader, *fragment_shader);
+    glLinkProgram(m_shader);
+
+    glDeleteShader(*vertex_shader);
+    glDeleteShader(*fragment_shader);
 
     // OpenGL settings
     glEnable(GL_DEPTH_TEST);

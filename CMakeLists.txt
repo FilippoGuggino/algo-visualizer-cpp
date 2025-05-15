@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(WasmExample VERSION 0.0.0)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
@@ -38,6 +38,7 @@ add_executable(${PROJECT_NAME}
   src/main.cpp
   src/canvas.cpp
   src/geometry.cpp
+  src/shaders_data.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw glad glm::glm spdlog)
@@ -63,3 +64,16 @@ if(${PLATFORM} MATCHES "Web")
   target_compile_definitions(${PROJECT_NAME} PRIVATE PLATFORM=Web)
   set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "--preload-file resources/")
 endif()
+
+add_custom_target(
+  create_resources ALL
+  COMMAND ${CMAKE_COMMAND}
+  -DDIR=${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders
+  -DOUTPUT=${CMAKE_CURRENT_SOURCE_DIR}/src/shaders_data.cpp
+  -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/create_resources.cmake
+  BYPRODUCTS ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders_data.cpp
+  COMMENT "Creating resources..."
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_dependencies(${PROJECT_NAME} create_resources)
