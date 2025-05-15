@@ -4,21 +4,24 @@
 #include <vector>
 
 #include "glad/glad.h"
+#include <glm/glm.hpp>
 
 class Geometry {
 public:
-    virtual void draw() = 0;
+    virtual void draw(unsigned int shader) = 0;
 };
 
 class Rectangle : public Geometry {
 public:
     Rectangle(float width, float height);
 
-    void draw();
+    void draw(unsigned int shader);
 
 private:
     std::vector<GLfloat> m_vertices;
     std::vector<GLuint> m_indices;
+
+    glm::mat4 m_model;
 
     unsigned int m_vao;
     unsigned int m_vbo;
@@ -29,11 +32,13 @@ class Cylinder : public Geometry {
 public:
     Cylinder(float height, float radius, int n_segments);
 
-    void draw();
+    void draw(unsigned int shader);
 
 private:
     std::vector<GLfloat> m_vertices;
     std::vector<GLuint> m_indices;
+
+    glm::mat4 m_model;
 
     unsigned int m_vao;
     unsigned int m_vbo;

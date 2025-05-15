@@ -3,6 +3,7 @@
 #include <numeric>
 
 #include "geometry.h"
+#include <glm/gtc/quaternion.hpp>
 
 Rectangle::Rectangle(float width, float height)
 {
@@ -33,8 +34,11 @@ Rectangle::Rectangle(float width, float height)
     glEnableVertexAttribArray(0);
 }
 
-void Rectangle::draw()
+void Rectangle::draw(unsigned int shader)
 {
+    GLuint modelLoc = glGetUniformLocation(shader, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &m_model[0][0]);
+
     glBindVertexArray(m_vao);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
@@ -63,6 +67,7 @@ static std::vector<GLfloat> cylinder_vertices(float height, float radius, int n_
 }
 
 Cylinder::Cylinder(float height, float radius, int n_segments)
+    : m_model(glm::identity<glm::mat4>())
 {
     m_vertices = cylinder_vertices(height, radius, n_segments);
 
@@ -86,8 +91,11 @@ Cylinder::Cylinder(float height, float radius, int n_segments)
     glEnableVertexAttribArray(0);
 }
 
-void Cylinder::draw()
+void Cylinder::draw(unsigned int shader)
 {
+    GLuint modelLoc = glGetUniformLocation(shader, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &m_model[0][0]);
+
     glBindVertexArray(m_vao);
     glDrawElements(GL_TRIANGLE_STRIP, m_indices.size(), GL_UNSIGNED_INT, 0);
 }

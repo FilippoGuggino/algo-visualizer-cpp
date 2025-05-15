@@ -84,7 +84,6 @@ static std::expected<unsigned int, std::string> compile_shader(const char* data,
 
 Canvas::Canvas(GLFWwindow* window)
     : m_window(window)
-    , m_model(glm::identity<glm::mat4>())
     , m_rotation_matrix(glm::identity<glm::mat4>())
     , m_scale_matrix(glm::identity<glm::mat4>())
 {
@@ -130,17 +129,16 @@ void Canvas::render()
     m_view = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
     m_projection = glm::perspective(glm::radians(45.0f), (float)m_width / m_height, 0.1f, 100.0f);
 
-    GLuint modelLoc = glGetUniformLocation(m_shader, "model");
-    m_model = m_rotation_matrix * m_scale_matrix;
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &m_model[0][0]);
     GLuint viewLoc = glGetUniformLocation(m_shader, "view");
+    m_view = m_rotation_matrix * m_scale_matrix;
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &m_view[0][0]);
+
     GLuint projectionLoc = glGetUniformLocation(m_shader, "projection");
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, &m_projection[0][0]);
 
     for (auto& g : m_geometries) {
         if (g) {
-            g->draw();
+            g->draw(m_shader);
         }
     }
 
