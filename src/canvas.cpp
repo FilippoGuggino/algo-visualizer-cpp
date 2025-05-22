@@ -8,6 +8,9 @@
 #include "log.h"
 #include "shaders_data.h"
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
+
 // Convert screen coordinates to arcball sphere
 static glm::vec3 screenToArcball(float x, float y, unsigned int width, unsigned int height)
 {
@@ -84,6 +87,7 @@ static std::expected<unsigned int, std::string> compile_shader(const char* data,
 
 Canvas::Canvas(GLFWwindow* window)
     : m_window(window)
+    , m_translation_matrix(glm::identity<glm::mat4>())
     , m_rotation_matrix(glm::identity<glm::mat4>())
     , m_scale_matrix(glm::identity<glm::mat4>())
 {
@@ -126,11 +130,10 @@ void Canvas::render()
 
     glUseProgram(m_shader);
 
-    m_view = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
     m_projection = glm::perspective(glm::radians(45.0f), (float)m_width / m_height, 0.1f, 100.0f);
 
     GLuint viewLoc = glGetUniformLocation(m_shader, "view");
-    m_view = m_rotation_matrix * m_scale_matrix;
+    m_view = m_translation_matrix * m_rotation_matrix * m_scale_matrix;
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &m_view[0][0]);
 
     GLuint projectionLoc = glGetUniformLocation(m_shader, "projection");
@@ -158,27 +161,48 @@ void Canvas::on_framebuffer_resize(int newWidth, int newHeight)
     m_width = newWidth;
 }
 
+static glm::vec2 normalize_mouse_coordinates(glm::vec2 mouse_coord, int width, int height)
+{
+    glm::vec2 normalized_coord;
+    // Change coordinates
+    double ws2 = width / 2.0;
+    double hs2 = height / 2.0;
+    normalized_coord.x = mouse_coord.x / ws2 - 1.0;
+    normalized_coord.y = mouse_coord.y / hs2 - 1.0;
+    return normalized_coord;
+}
+
 void Canvas::on_mouse_button_callback(int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT) {
         if (action == GLFW_PRESS) {
-            isDragging = true;
+            m_is_dragging_rotation = true;
             double xpos, ypos;
             glfwGetCursorPos(m_window, &xpos, &ypos);
-            m_start_vec = screenToArcball(xpos, ypos, m_width, m_height);
+            m_start_vec_rotation = screenToArcball(xpos, ypos, m_width, m_height);
         } else if (action == GLFW_RELEASE) {
-            isDragging = false;
+            m_is_dragging_rotation = false;
             m_last_rotation = m_current_rotation;
+        }
+    } else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+        if (action == GLFW_PRESS) {
+            m_is_dragging_translation = true;
+            double xpos, ypos;
+            glfwGetCursorPos(m_window, &xpos, &ypos);
+            m_start_vec_translation = normalize_mouse_coordinates(glm::vec2(xpos, ypos), m_width, m_height);
+        } else if (action == GLFW_RELEASE) {
+            m_is_dragging_translation = false;
+            m_last_translation = m_current_translation;
         }
     }
 }
 
 void Canvas::on_cursor_position_callback(double xpos, double ypos)
 {
-    if (isDragging) {
-        m_end_vec = screenToArcball(xpos, ypos, m_width, m_height);
-        glm::vec3 axis = glm::cross(m_start_vec, m_end_vec);
-        float angle = acos(glm::dot(m_start_vec, m_end_vec));
+    if (m_is_dragging_rotation) {
+        m_end_vec_rotation = screenToArcball(xpos, ypos, m_width, m_height);
+        glm::vec3 axis = glm::cross(m_start_vec_rotation, m_end_vec_rotation);
+        float angle = acos(glm::dot(m_start_vec_rotation, m_end_vec_rotation));
 
         if (glm::length(axis) > 0.0001f) {
             axis = glm::normalize(axis);
@@ -186,6 +210,13 @@ void Canvas::on_cursor_position_callback(double xpos, double ypos)
             m_current_rotation = deltaRotation * m_last_rotation;
             m_rotation_matrix = glm::mat4_cast(m_current_rotation);
         }
+    }
+
+    if (m_is_dragging_translation) {
+        glm::vec2 current_vec_translation = normalize_mouse_coordinates(glm::vec2(xpos, ypos), m_width, m_height);
+        glm::vec2 diff_vec = current_vec_translation - m_start_vec_translation;
+        m_current_translation = m_last_translation + diff_vec;
+        m_translation_matrix = glm::translate(glm::identity<glm::mat4>(), glm::vec3(m_current_translation.x, -m_current_translation.y, 0));
     }
 }
 

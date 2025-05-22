@@ -33,12 +33,18 @@ private:
     glm::mat4 modelMatrix = glm::mat4(1.0f);
 
     // Arcball variables
-    bool isDragging = false;
-    glm::vec3 m_start_vec;
-    glm::vec3 m_end_vec;
+    bool m_is_dragging_rotation = false;
+    glm::vec3 m_start_vec_rotation;
+    glm::vec3 m_end_vec_rotation;
     glm::quat m_current_rotation = glm::quat(1, 0, 0, 0);
     glm::quat m_last_rotation = glm::quat(1, 0, 0, 0);
 
+    bool m_is_dragging_translation = false;
+    glm::vec2 m_start_vec_translation;
+    glm::vec2 m_current_translation = glm::zero<glm::vec2>();
+    glm::vec2 m_last_translation = glm::zero<glm::vec2>();
+
+    glm::mat4 m_translation_matrix;
     glm::mat4 m_rotation_matrix;
     glm::mat4 m_scale_matrix;
 
