@@ -200,9 +200,9 @@ void Canvas::on_mouse_button_callback(int button, int action, int mods)
 void Canvas::on_cursor_position_callback(double xpos, double ypos)
 {
     if (m_is_dragging_rotation) {
-        m_end_vec_rotation = screenToArcball(xpos, ypos, m_width, m_height);
-        glm::vec3 axis = glm::cross(m_start_vec_rotation, m_end_vec_rotation);
-        float angle = acos(glm::dot(m_start_vec_rotation, m_end_vec_rotation));
+        glm::vec3 current_vec_rotation = screenToArcball(xpos, ypos, m_width, m_height);
+        glm::vec3 axis = glm::cross(m_start_vec_rotation, current_vec_rotation);
+        float angle = acos(glm::dot(m_start_vec_rotation, current_vec_rotation));
 
         if (glm::length(axis) > 0.0001f) {
             axis = glm::normalize(axis);

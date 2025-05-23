@@ -35,7 +35,6 @@ private:
     // Arcball variables
     bool m_is_dragging_rotation = false;
     glm::vec3 m_start_vec_rotation;
-    glm::vec3 m_end_vec_rotation;
     glm::quat m_current_rotation = glm::quat(1, 0, 0, 0);
     glm::quat m_last_rotation = glm::quat(1, 0, 0, 0);
 
