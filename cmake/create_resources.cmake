@@ -19,6 +19,7 @@ function(create_resources dir output)
 
         # Convert hex data for C compatibility
         string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
+        string(APPEND filedata "0x00") # append end of string
 
         # Append data to output file
         file(APPEND ${output} "const char ${filename}[] = {${filedata}};\nconst unsigned int ${filename}_size = sizeof(${filename});\n")
