@@ -11,6 +11,8 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
 
+#include <iostream>
+
 // Convert screen coordinates to arcball sphere
 static glm::vec3 screenToArcball(float x, float y, unsigned int width, unsigned int height)
 {
@@ -90,6 +92,8 @@ Canvas::Canvas(GLFWwindow* window)
     , m_translation_matrix(glm::identity<glm::mat4>())
     , m_rotation_matrix(glm::identity<glm::mat4>())
     , m_scale_matrix(glm::identity<glm::mat4>())
+    , m_center_translation_matrix(glm::identity<glm::mat4>())
+    , m_cursor_translation(glm::vec2(0,0))
 {
     glfwGetFramebufferSize(window, &m_width, &m_height);
 
@@ -133,7 +137,7 @@ void Canvas::render()
     m_projection = glm::perspective(glm::radians(45.0f), (float)m_width / m_height, 0.1f, 100.0f);
 
     GLuint viewLoc = glGetUniformLocation(m_shader, "view");
-    m_view = m_translation_matrix * m_rotation_matrix * m_scale_matrix;
+    m_view = m_center_translation_matrix * m_scale_matrix * glm::inverse(m_center_translation_matrix) * m_translation_matrix * m_rotation_matrix;
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &m_view[0][0]);
 
     GLuint projectionLoc = glGetUniformLocation(m_shader, "projection");
@@ -222,5 +226,15 @@ void Canvas::on_cursor_position_callback(double xpos, double ypos)
 
 void Canvas::on_scroll_callback(double xoffset, double yoffset)
 {
+    double xpos, ypos;
+    glfwGetCursorPos(m_window, &xpos, &ypos);
+
+    // glm::vec2 cursor_translation = glm::vec2(m_width / 2, m_height / 2) - glm::vec2(xpos, ypos);
+    m_cursor_translation = normalize_mouse_coordinates(glm::vec2(xpos, ypos), m_width, m_height);
+    // std::cout << glm::to_string(cursor_translation) << std::endl;
+    // glm::vec2 center_translation = m_last_translation - cursor_translation;
+    m_center_translation_matrix = glm::translate(glm::identity<glm::mat4>(), glm::vec3(m_cursor_translation.x, -m_cursor_translation.y, 0));
+
+    // m_scale_matrix = glm::inverse(m_translation_matrix) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0f + yoffset * 0.1f)) * m_translation_matrix; 
     m_scale_matrix *= glm::scale(glm::mat4(1.0f), glm::vec3(1.0f + yoffset * 0.1f));
 }

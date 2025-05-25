@@ -43,6 +43,9 @@ private:
     glm::vec2 m_current_translation = glm::zero<glm::vec2>();
     glm::vec2 m_last_translation = glm::zero<glm::vec2>();
 
+    glm::vec2 m_cursor_translation;
+    glm::mat4 m_center_translation_matrix;
+
     glm::mat4 m_translation_matrix;
     glm::mat4 m_rotation_matrix;
     glm::mat4 m_scale_matrix;
