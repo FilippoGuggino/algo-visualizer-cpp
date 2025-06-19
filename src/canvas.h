@@ -21,6 +21,8 @@ public:
     void on_cursor_position_callback(double xpos, double ypos);
     void on_scroll_callback(double xoffset, double yoffset);
 
+    glm::vec3 screen_to_world_on_plane(double mouseX, double mouseY, float planeZ);
+
 private:
     GLFWwindow* m_window;
 
@@ -39,10 +41,10 @@ private:
     glm::quat m_current_rotation = glm::quat(1, 0, 0, 0);
     glm::quat m_last_rotation = glm::quat(1, 0, 0, 0);
 
-    bool m_is_dragging_translation = false;
-    glm::vec2 m_start_vec_translation;
-    glm::vec2 m_current_translation = glm::zero<glm::vec2>();
-    glm::vec2 m_last_translation = glm::zero<glm::vec2>();
+    bool m_is_panning = false;
+    glm::mat4 m_pan_matrix;
+    glm::vec3 m_last_pan_translation;
+    glm::vec3 m_start_pan_world_position;
 
     glm::mat4 m_static_view_matrix;
     glm::mat4 m_translation_matrix;
