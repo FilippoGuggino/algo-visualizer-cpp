@@ -13,6 +13,7 @@ class Canvas {
 public:
     Canvas(GLFWwindow* window);
     void add_geometry(Geometry* geometry);
+    glm::mat4 view_matrix();
     void render();
 
     void on_framebuffer_resize(int newWidth, int newHeight);
@@ -43,6 +44,7 @@ private:
     glm::vec2 m_current_translation = glm::zero<glm::vec2>();
     glm::vec2 m_last_translation = glm::zero<glm::vec2>();
 
+    glm::mat4 m_static_view_matrix;
     glm::mat4 m_translation_matrix;
     glm::mat4 m_rotation_matrix;
     glm::mat4 m_scale_matrix;

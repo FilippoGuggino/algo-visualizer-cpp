@@ -90,8 +90,10 @@ Canvas::Canvas(GLFWwindow* window)
     , m_translation_matrix(glm::identity<glm::mat4>())
     , m_rotation_matrix(glm::identity<glm::mat4>())
     , m_scale_matrix(glm::identity<glm::mat4>())
+    , m_static_view_matrix(glm::lookAt(glm::vec3(0, 0, 100), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)))
 {
     glfwGetFramebufferSize(window, &m_width, &m_height);
+    m_projection = glm::perspective<float>(glm::radians(45.0), float(m_width) / m_height, 0.1f, 1000.0f);
 
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -123,6 +125,11 @@ Canvas::Canvas(GLFWwindow* window)
     glEnable(GL_DEBUG_OUTPUT);
 }
 
+glm::mat4 Canvas::view_matrix()
+{
+    return m_static_view_matrix * m_rotation_matrix * m_scale_matrix;
+}
+
 void Canvas::render()
 {
     glClearColor(0.7f, 0.9f, 0.1f, 1.0f);
@@ -130,10 +137,8 @@ void Canvas::render()
 
     glUseProgram(m_shader);
 
-    m_projection = glm::perspective(glm::radians(45.0f), (float)m_width / m_height, 0.1f, 100.0f);
-
     GLuint viewLoc = glGetUniformLocation(m_shader, "view");
-    m_view = m_translation_matrix * m_rotation_matrix * m_scale_matrix;
+    m_view = view_matrix();
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &m_view[0][0]);
 
     GLuint projectionLoc = glGetUniformLocation(m_shader, "projection");
@@ -159,6 +164,7 @@ void Canvas::on_framebuffer_resize(int newWidth, int newHeight)
     glViewport(0, 0, newWidth, newHeight);
     m_height = newHeight;
     m_width = newWidth;
+    m_projection = glm::perspective<float>(glm::radians(45.0), float(m_width) / m_height, 0.1f, 1000.0f);
 }
 
 static glm::vec2 normalize_mouse_coordinates(glm::vec2 mouse_coord, int width, int height)

@@ -41,7 +41,7 @@ int main(void)
 
     Canvas canvas(window);
 
-    Cylinder c(1.0, 0.2, 30);
+    Cylinder c(50.0, 20, 30);
     canvas.add_geometry(&c);
 
     // Rectangle rec(1.0, 1.0);
