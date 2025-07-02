@@ -21,8 +21,6 @@ public:
     void on_cursor_position_callback(double xpos, double ypos);
     void on_scroll_callback(double xoffset, double yoffset);
 
-    glm::vec3 screen_to_world_on_plane(double mouseX, double mouseY, float planeZ);
-
 private:
     GLFWwindow* m_window;
 

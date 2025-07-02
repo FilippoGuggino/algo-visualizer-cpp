@@ -93,7 +93,7 @@ Canvas::Canvas(GLFWwindow* window)
     , m_static_view_matrix(glm::lookAt(glm::vec3(0, 0, 100), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)))
 {
     glfwGetFramebufferSize(window, &m_width, &m_height);
-    m_projection = glm::perspective<float>(glm::radians(45.0), float(m_width) / m_height, 0.1f, 1000.0f);
+    m_projection = glm::ortho(-m_width / 2.0, m_width / 2.0, m_height / 2.0, -m_height / 2.0, 1.0, 1000.0);
 
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -164,18 +164,7 @@ void Canvas::on_framebuffer_resize(int newWidth, int newHeight)
     glViewport(0, 0, newWidth, newHeight);
     m_height = newHeight;
     m_width = newWidth;
-    m_projection = glm::perspective<float>(glm::radians(45.0), float(m_width) / m_height, 0.1f, 1000.0f);
-}
-
-static glm::vec2 normalize_mouse_coordinates(glm::vec2 mouse_coord, int width, int height)
-{
-    glm::vec2 normalized_coord;
-    // Change coordinates
-    double ws2 = width / 2.0;
-    double hs2 = height / 2.0;
-    normalized_coord.x = mouse_coord.x / ws2 - 1.0;
-    normalized_coord.y = mouse_coord.y / hs2 - 1.0;
-    return normalized_coord;
+    m_projection = glm::ortho(-m_width / 2.0, m_width / 2.0, m_height / 2.0, -m_height / 2.0, 1.0, 1000.0);
 }
 
 void Canvas::on_mouse_button_callback(int button, int action, int mods)
@@ -195,8 +184,7 @@ void Canvas::on_mouse_button_callback(int button, int action, int mods)
             m_is_panning = true;
             double xpos, ypos;
             glfwGetCursorPos(m_window, &xpos, &ypos);
-            // "Unproject" the mouse coordinates to the Z=0 plane to get a starting world point
-            m_start_pan_world_position = screen_to_world_on_plane(xpos, ypos, 0.0f);
+            m_start_pan_world_position = glm::unProject(glm::vec3(xpos, m_height - ypos, 0.0f), m_static_view_matrix, m_projection, glm::vec4(0.0f, 0.0f, m_width, m_height));
         } else if (action == GLFW_RELEASE) {
             m_is_panning = false;
             // "Commit" the translation by saving it
@@ -220,8 +208,7 @@ void Canvas::on_cursor_position_callback(double xpos, double ypos)
         }
     } else if (m_is_panning) {
         // Find the current world position of the cursor on the Z=0 plane
-        glm::vec3 current_world_position = screen_to_world_on_plane(xpos, ypos, 0.0f);
-
+        glm::vec3 current_world_position = glm::unProject(glm::vec3(xpos, m_height - ypos, 0.0f), m_static_view_matrix, m_projection, glm::vec4(0.0f, 0.0f, m_width, m_height));
         // Calculate the displacement from the start of the pan
         glm::vec3 delta = current_world_position - m_start_pan_world_position;
 
@@ -233,51 +220,4 @@ void Canvas::on_cursor_position_callback(double xpos, double ypos)
 void Canvas::on_scroll_callback(double xoffset, double yoffset)
 {
     m_scale_matrix *= glm::scale(glm::mat4(1.0f), glm::vec3(1.0f + yoffset * 0.1f));
-}
-
-// This function casts a ray from the camera through the cursor's position on the screen
-// and finds where it intersects a plane at a given Z-coordinate in world space.
-glm::vec3 Canvas::screen_to_world_on_plane(double mouseX, double mouseY, float planeZ)
-{
-    // Steps 1, 2, and 3: Get the camera ray in world coordinates. This part is correct.
-    // 1. Convert screen coordinates to Normalized Device Coordinates (NDC)
-    float ndcX = (2.0f * mouseX) / m_width - 1.0f;
-    float ndcY = 1.0f - (2.0f * mouseY) / m_height;
-
-    // 2. Unproject from NDC to Eye/Camera space to get a ray
-    glm::vec4 clip_coords(ndcX, ndcY, -1.0f, 1.0f);
-    glm::mat4 inv_projection = glm::inverse(m_projection);
-    glm::vec4 eye_coords = inv_projection * clip_coords;
-    eye_coords = glm::vec4(eye_coords.x, eye_coords.y, -1.0f, 0.0f);
-
-    // 3. Unproject from Eye space to World space
-    // NOTE: The matrix used here is crucial. It must represent the transformation
-    // of the object *without* the pan we are currently calculating.
-    glm::mat4 inv_view_model = glm::inverse(m_static_view_matrix * m_scale_matrix);
-    glm::vec3 world_ray_dir = glm::normalize(glm::vec3(inv_view_model * eye_coords));
-
-    // 4. Define the ray origin (the camera's position in the world)
-    glm::vec3 ray_origin = glm::vec3(glm::inverse(m_static_view_matrix)[3]);
-
-    // 5. Define the plane we want to intersect with.
-    // The plane passes through the origin (0,0,0) and is rotated with the scene.
-    glm::vec3 plane_point = glm::vec3(0.0f, 0.0f, planeZ); // A point on our logical plane (before rotation)
-
-    // The plane normal was (0,0,1), but it must be rotated by the current rotation matrix.
-    // We don't use scale here as it doesn't affect the normal's direction for uniform scales.
-    glm::vec3 plane_normal = glm::normalize(glm::vec3(glm::vec4(0.0f, 0.0f, 1.0f, 0.0f)));
-
-    // 6. Calculate the intersection using the general ray-plane intersection formula.
-    // This correctly handles a plane at any orientation.
-    float denominator = glm::dot(world_ray_dir, plane_normal);
-
-    // Avoid division by zero if the ray is parallel to the plane
-    if (std::abs(denominator) > 1e-6) {
-        float t = glm::dot(plane_point - ray_origin, plane_normal) / denominator;
-        return ray_origin + t * world_ray_dir;
-    }
-
-    // If the ray is parallel, return a default point (or handle as an error)
-    // For panning, returning the origin of the plane is a safe fallback.
-    return plane_point;
 }
