@@ -13,7 +13,7 @@ class Canvas {
 public:
     Canvas(GLFWwindow* window);
     void add_geometry(Geometry* geometry);
-    glm::mat4 view_matrix();
+    glm::dmat4 view_matrix();
     void render();
 
     void on_framebuffer_resize(int newWidth, int newHeight);
@@ -40,17 +40,17 @@ private:
     glm::quat m_last_rotation = glm::quat(1, 0, 0, 0);
 
     bool m_is_panning = false;
-    glm::mat4 m_pan_matrix;
-    glm::vec3 m_last_pan_translation;
-    glm::vec3 m_start_pan_world_position;
+    glm::dmat4 m_pan_matrix;
+    glm::dvec2 m_start_pan_cursor;
+    glm::dmat4 m_last_pan_matrix;
 
-    glm::mat4 m_static_view_matrix;
-    glm::mat4 m_translation_matrix;
-    glm::mat4 m_rotation_matrix;
-    glm::mat4 m_scale_matrix;
+    glm::dmat4 m_static_view_matrix;
+    glm::dmat4 m_translation_matrix;
+    glm::dmat4 m_rotation_matrix;
+    glm::dmat4 m_scale_matrix;
 
     glm::mat4 m_view;
-    glm::mat4 m_projection;
+    glm::dmat4 m_projection;
 };
 
 #endif /* CANVAS_H */

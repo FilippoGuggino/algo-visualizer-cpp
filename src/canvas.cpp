@@ -91,6 +91,7 @@ Canvas::Canvas(GLFWwindow* window)
     , m_scale_matrix(glm::identity<glm::mat4>())
     , m_pan_matrix(glm::identity<glm::mat4>())
     , m_static_view_matrix(glm::lookAt(glm::vec3(0, 0, 100), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)))
+    , m_last_pan_matrix(glm::identity<glm::mat4>())
 {
     glfwGetFramebufferSize(window, &m_width, &m_height);
     m_projection = glm::ortho(-m_width / 2.0, m_width / 2.0, m_height / 2.0, -m_height / 2.0, 1.0, 1000.0);
@@ -125,9 +126,9 @@ Canvas::Canvas(GLFWwindow* window)
     glEnable(GL_DEBUG_OUTPUT);
 }
 
-glm::mat4 Canvas::view_matrix()
+glm::dmat4 Canvas::view_matrix()
 {
-    return m_static_view_matrix * m_pan_matrix * m_rotation_matrix * m_scale_matrix;
+    return m_static_view_matrix * m_rotation_matrix * m_scale_matrix * m_pan_matrix;
 }
 
 void Canvas::render()
@@ -142,7 +143,8 @@ void Canvas::render()
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &m_view[0][0]);
 
     GLuint projectionLoc = glGetUniformLocation(m_shader, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, &m_projection[0][0]);
+    glm::mat4 proj = m_projection;
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, &proj[0][0]);
 
     for (auto& g : m_geometries) {
         if (g) {
@@ -184,11 +186,14 @@ void Canvas::on_mouse_button_callback(int button, int action, int mods)
             m_is_panning = true;
             double xpos, ypos;
             glfwGetCursorPos(m_window, &xpos, &ypos);
-            m_start_pan_world_position = glm::unProject(glm::vec3(xpos, m_height - ypos, 0.0f), m_static_view_matrix, m_projection, glm::vec4(0.0f, 0.0f, m_width, m_height));
+            // --- FIX ---
+            // Instead of calculating a world position, we now save the cursor
+            // position and the current pan matrix. This makes the panning
+            // operation cumulative and prevents conflicts with the zoom's panning.
+            m_start_pan_cursor = glm::dvec2(xpos, ypos);
+            m_last_pan_matrix = m_pan_matrix;
         } else if (action == GLFW_RELEASE) {
             m_is_panning = false;
-            // "Commit" the translation by saving it
-            m_last_pan_translation = glm::vec3(m_pan_matrix[3]);
         }
     }
 }
@@ -207,17 +212,149 @@ void Canvas::on_cursor_position_callback(double xpos, double ypos)
             m_rotation_matrix = glm::mat4_cast(m_current_rotation);
         }
     } else if (m_is_panning) {
-        // Find the current world position of the cursor on the Z=0 plane
-        glm::vec3 current_world_position = glm::unProject(glm::vec3(xpos, m_height - ypos, 0.0f), m_static_view_matrix, m_projection, glm::vec4(0.0f, 0.0f, m_width, m_height));
-        // Calculate the displacement from the start of the pan
-        glm::vec3 delta = current_world_position - m_start_pan_world_position;
+        glm::dvec4 viewport(0.0f, 0.0f, m_width, m_height);
 
-        // Update the pan matrix by adding the delta to the last committed translation
-        m_pan_matrix = glm::translate(glm::mat4(1.0f), m_last_pan_translation + delta);
+        // We use the static_view_matrix for unprojection to get a consistent panning speed
+        // regardless of the current rotation or scale.
+        glm::dvec3 start_world = glm::unProject(glm::dvec3(m_start_pan_cursor.x, m_height - m_start_pan_cursor.y, 0.0f), m_static_view_matrix, m_projection, viewport);
+        glm::dvec3 current_world = glm::unProject(glm::dvec3(xpos, m_height - ypos, 0.0f), m_static_view_matrix, m_projection, viewport);
+
+        glm::dvec3 delta = current_world - start_world;
+
+        // Apply the translation delta to the matrix state from the start of the pan.
+        m_pan_matrix = glm::translate(glm::dmat4(1.0f), delta) * m_last_pan_matrix;
     }
 }
 
+// void Canvas::on_scroll_callback(double xoffset, double yoffset)
+// {
+//     glm::vec4 viewport(0.0f, 0.0f, m_width, m_height);
+
+//     double xpos, ypos;
+//     glfwGetCursorPos(m_window, &xpos, &ypos);
+
+//     glm::dvec3 near_point = glm::unProject(glm::vec3(xpos, m_height - ypos, 0.01f), view_matrix(), m_projection, viewport);
+//     glm::dvec3 far_point = glm::unProject(glm::vec3(xpos, m_height - ypos, 0.99f), view_matrix(), m_projection, viewport);
+//     glm::dvec3 ray_dir = glm::normalize(far_point - near_point);
+
+//     double t_before = -near_point.z / ray_dir.z;
+//     if (t_before < 0) {
+//         t_before = 0;
+//     }
+//     if (t_before > 1) {
+//         t_before = 1;
+//     }
+
+//     glm::dvec3 cursor_world_before = near_point + t_before * ray_dir;
+
+//     m_scale_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f + yoffset * 0.1f)) * m_scale_matrix;
+
+//     glm::dvec3 near_point_after = glm::unProject(glm::vec3(xpos, m_height - ypos, 0.01f), view_matrix(), m_projection, viewport);
+//     glm::dvec3 far_point_after = glm::unProject(glm::vec3(xpos, m_height - ypos, 0.99f), view_matrix(), m_projection, viewport);
+//     glm::dvec3 ray_dir_after = glm::normalize(far_point_after - near_point_after);
+
+//     double t_after = -near_point_after.z / ray_dir_after.z;
+//     if (t_after < 0) {
+//         t_after = 0;
+//     }
+//     if (t_after > 1) {
+//         t_after = 1;
+//     }
+
+//     glm::dvec3 cursor_world_after = near_point_after + t_after * ray_dir_after;
+
+//     glm::dvec3 delta = (cursor_world_before - cursor_world_after);
+//     m_pan_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(delta)) * m_pan_matrix;
+// }
+
 void Canvas::on_scroll_callback(double xoffset, double yoffset)
 {
-    m_scale_matrix *= glm::scale(glm::mat4(1.0f), glm::vec3(1.0f + yoffset * 0.1f));
+    // This function implements zooming towards the mouse cursor. The logic is:
+    // 1. Find the world-space position under the cursor BEFORE zooming.
+    // 2. Apply the zoom (scaling transformation).
+    // 3. Find the new world-space position under the same cursor position AFTER zooming.
+    // 4. Calculate the difference (delta) between the before and after positions.
+    // 5. Apply a translation (pan) equal to this delta to counteract the shift.
+
+    glm::vec4 viewport(0.0f, 0.0f, m_width, m_height);
+    double xpos, ypos;
+    glfwGetCursorPos(m_window, &xpos, &ypos);
+
+    // --- 1. Find world position before zoom ---
+    glm::dvec3 cursor_world_before;
+    {
+        // Get the combined view matrix *before* the new scale is applied
+        glm::dmat4 view_before = view_matrix();
+
+        // Unproject the cursor's screen position to get a ray in world space
+        glm::dvec3 near_point = glm::unProject(glm::dvec3(xpos, m_height - ypos, 0.0f), view_before, m_projection, viewport);
+        glm::dvec3 far_point = glm::unProject(glm::dvec3(xpos, m_height - ypos, 1.0f), view_before, m_projection, viewport);
+        glm::dvec3 ray_dir = glm::normalize(far_point - near_point);
+
+        // Find where this ray intersects the Z=0 plane.
+        // Ray equation: P(t) = near_point + t * ray_dir
+        // We want P(t).z = 0, so: near_point.z + t * ray_dir.z = 0
+        // Which gives: t = -near_point.z / ray_dir.z
+        if (std::abs(ray_dir.z) > 1e-6) { // Avoid division by zero
+            double t = -near_point.z / ray_dir.z;
+            cursor_world_before = near_point + t * ray_dir;
+        } else {
+            return; // Ray is parallel to the plane, can't determine a point to zoom to.
+        }
+    }
+
+    // --- 2. Apply scaling ---
+    float scale_factor = 1.0f + yoffset * 0.1f;
+    m_scale_matrix = glm::scale(glm::dmat4(1.0f), glm::dvec3(scale_factor)) * m_scale_matrix;
+
+    // --- 3. Find world position after zoom ---
+    glm::dvec3 cursor_world_after;
+    {
+        // Get the combined view matrix *after* the new scale is applied
+        glm::dmat4 view_after = view_matrix();
+        glm::dvec3 near_point = glm::unProject(glm::dvec3(xpos, m_height - ypos, 0.0f), view_after, m_projection, viewport);
+        glm::dvec3 far_point = glm::unProject(glm::dvec3(xpos, m_height - ypos, 1.0f), view_after, m_projection, viewport);
+        glm::dvec3 ray_dir = glm::normalize(far_point - near_point);
+
+        if (std::abs(ray_dir.z) > 1e-6) {
+            double t = -near_point.z / ray_dir.z;
+            cursor_world_after = near_point + t * ray_dir;
+        } else {
+            return;
+        }
+    }
+
+    // --- 4. Calculate the correction delta ---
+    glm::dvec3 delta = cursor_world_after - cursor_world_before;
+
+    // --- 5. Apply the correction pan ---
+    // Pre-multiply the pan matrix with a translation for the delta.
+    // This shifts the entire scene to keep the point under the cursor stationary.
+    m_pan_matrix = glm::translate(glm::dmat4(1.0f), delta) * m_pan_matrix;
+
+    glm::dvec3 cursor_world_after_pan;
+    {
+        // Get the combined view matrix *after* the new scale is applied
+        glm::dmat4 view_after = view_matrix();
+        glm::dvec3 near_point = glm::unProject(glm::dvec3(xpos, m_height - ypos, 0.0f), view_after, m_projection, viewport);
+        glm::dvec3 far_point = glm::unProject(glm::dvec3(xpos, m_height - ypos, 1.0f), view_after, m_projection, viewport);
+        glm::dvec3 ray_dir = glm::normalize(far_point - near_point);
+
+        if (std::abs(ray_dir.z) > 1e-6) {
+            double t = -near_point.z / ray_dir.z;
+            cursor_world_after_pan = near_point + t * ray_dir;
+        } else {
+            return;
+        }
+    }
+    std::cout << "pan_matrix: " << glm::to_string(m_pan_matrix) << std::endl;
+
+    // --- Optional Debug Output ---
+    // Uncomment the line below to see the calculated values in your console.
+    // This is a great way to debug and understand the process.
+    printf("World Before: (%.2f, %.2f, %.2f) | World After Zoom: (%.2f, %.2f, %.2f) | World After Zoom+Pan: (%.2f, %.2f, %.2f) | Delta: (%.2f, %.2f, %.2f)\n",
+        cursor_world_before.x, cursor_world_before.y, cursor_world_before.z,
+        cursor_world_after.x, cursor_world_after.y, cursor_world_after.z,
+        cursor_world_after_pan.x, cursor_world_after_pan.y, cursor_world_after_pan.z,
+        delta.x, delta.y, delta.z);
 }
